@@ -9,7 +9,9 @@ const app = express();
 const allowedOrigin = process.env.CLIENT_URL;
 app.use(
   cors({
-    origin: allowedOrigin && allowedOrigin !== '*' ? allowedOrigin : '*',
+    origin: allowedOrigin && allowedOrigin !== '*'
+      ? allowedOrigin.split(',').map((o) => o.trim().replace(/\/+$/, ''))
+      : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   })
@@ -19,16 +21,18 @@ app.use(
 app.use(express.json());
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'UserFlow API is running smoothly'
   });
 });
 
-// Mount modular routes
+// Mount modular routes (both /api/... and root /... paths for maximum deployment compatibility)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/users', userRoutes);
 
 // 404 Handler for undefined routes
 app.use((req, res) => {

@@ -8,6 +8,9 @@
     "dev": "node --watch src/server.js",
     "create-admin": "node scripts/createAdmin.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [
     "userflow",
     "express",

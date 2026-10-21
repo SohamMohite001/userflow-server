@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 
@@ -20,10 +21,20 @@ app.use(
 // Built-in JSON body parser
 app.use(express.json());
 
-// Health check endpoint
-app.get(['/api/health', '/health'], (req, res) => {
+// Health check endpoint (accessible at root /, /health, /api/health with or without trailing slash)
+app.get(['/', '/health', '/health/', '/api/health', '/api/health/'], (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatusMap = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+
   res.status(200).json({
     status: 'ok',
+    database: dbStatusMap[dbState] || 'unknown',
+    uptime: Math.floor(process.uptime()),
     message: 'UserFlow API is running smoothly'
   });
 });

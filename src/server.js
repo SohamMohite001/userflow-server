@@ -2,43 +2,38 @@ require('dotenv').config();
 const app = require('./app');
 const connectDB = require('./config/db');
 
-// Verify critical environment variables
-const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
-const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
-
-if (missingEnvVars.length > 0) {
-  console.error(
-    `[Startup Error] Missing required environment variable(s): ${missingEnvVars.join(', ')}`
-  );
-  process.exit(1);
-}
-
+// Read PORT provided by Railway or default to 5000
 const PORT = parseInt(process.env.PORT, 10) || 5000;
 const HOST = '0.0.0.0';
 
-// Connect to MongoDB Atlas first, then start listening
-const startServer = async () => {
-  try {
-    await connectDB();
+// Start listening immediately so Railway's proxy and health check succeed without timing out
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[UserFlow Server] Running and listening on http://${HOST}:${PORT}`);
+  console.log(`[UserFlow Server] Process PORT: ${process.env.PORT || 'not defined in env, using 5000'}`);
+});
 
-    const server = app.listen(PORT, HOST, () => {
-      console.log(`[UserFlow Server] Running on http://${HOST}:${PORT}`);
+// Verify and connect to MongoDB Atlas
+if (!process.env.MONGODB_URI) {
+  console.error('[Startup Warning] MONGODB_URI environment variable is missing.');
+} else {
+  console.log('[UserFlow Server] Connecting to MongoDB Atlas...');
+  connectDB()
+    .then(() => {
+      console.log('[UserFlow Server] Database connected successfully.');
+    })
+    .catch((err) => {
+      console.error('[UserFlow Server] Database connection error:', err.message);
     });
+}
 
-    const shutdown = () => {
-      console.log('\n[UserFlow Server] Shutting down gracefully...');
-      server.close(() => {
-        console.log('[UserFlow Server] HTTP server closed.');
-        process.exit(0);
-      });
-    };
-
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
-  } catch (error) {
-    console.error('[Startup Error] Failed to start server:', error.message);
-    process.exit(1);
-  }
+// Graceful shutdown
+const shutdown = () => {
+  console.log('\n[UserFlow Server] Shutting down gracefully...');
+  server.close(() => {
+    console.log('[UserFlow Server] HTTP server closed.');
+    process.exit(0);
+  });
 };
 
-startServer();
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
